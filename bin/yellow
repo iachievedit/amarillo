@@ -1,0 +1,88 @@
+#!/usr/bin/env ruby
+# 
+# Copyright 2021 iAchieved.it LLC
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+require 'optparse'        # Parse commandline arguments
+require 'yellow'
+
+options = {}
+OptionParser.new do |opts|
+  opts.on("-z", "--zone ZONE", "Hosted zone") do |z|
+    options[:zone] = z
+  end
+
+  opts.on("-e", "--email EMAIL", "E-mail address") do |e|
+    options[:email] = e
+  end
+
+  opts.on("-n", "--name COMMONNAME", "Certificate Common Name") do |n|
+    options[:name] = n
+  end
+
+  opts.on("-o", "--output-directory OUTPUT_PATH", "Output directory of certificates and keys") do |o|
+    options[:certificate_path] = o
+  end
+
+  opts.on("-h", "--help") do |h|
+    options[:help] = h
+  end
+end.parse!
+
+if options[:help] then
+   manpage = <<-"HEREDOC"
+Usage:  yellow --zone ZONE --name COMMONNAME --email EMAIL [--output-path OUTPUT_PATH]
+   HEREDOC
+   puts manpage
+  exit 0
+end 
+
+if options[:zone].nil? or
+   options[:email].nil? or
+   options[:name].nil? then
+
+   puts "Usage:  yellow --zone ZONE --name COMMONNAME --email EMAIL [--output-directory OUTPUT_PATH]"
+
+   exit -1
+end
+
+if options[:output_path].nil?
+  certificate_path = "/etc/ssl/yellow"
+  key_path         = "/etc/ssl/yellow/private"
+else
+  certificate_path = options[:output_path]
+  key_path         = "#{certificate_path}/private"
+end
+
+unless File.writable?(key_path) && File.writable?(certificate_path)
+  puts "#{certificate_path} and #{key_path} are not writable"
+  exit -1
+end
+
+# Check for existense of aws.env
+awsEnvPath = Pathname.new("#{key_path}/aws.env")
+if not awsEnvPath.exist? then
+  puts "Error:  #{key_path}/aws.env must exist with aws_access_key_id and aws_secret_access_key"
+  exit -1
+end
+
+
+y = Yellow.new(certificate_path, key_path, awsEnvPath)
+y.requestCertificate(options[:zone], options[:name], options[:email])

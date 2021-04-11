@@ -20,7 +20,17 @@ Unfortunately there a many of us who want _secure_ communications between servic
 
 ## Configuration
 
-To use `yellow` you'll need to provide AWS credentials in `aws.env`.  You'll also want to have:
+To use `yellow` you'll need to provide AWS credentials in `aws.env`.  These credentials should be that of an AWS IAM user that only has programmatic access to Route 53 with the `AmazonRoute53FullAccess` policy.
+
+The format of the `aws.env` file is:
+
+```
+[default]
+aws_access_key_id=
+aws_secret_access_key=
+```
+
+You'll also want to have:
 
 * an E-mail address
 * Zone
@@ -28,7 +38,7 @@ To use `yellow` you'll need to provide AWS credentials in `aws.env`.  You'll als
 
 ## Output
 
-By default `yellow` wants to leave files in `/etc/ssl/`.
+By default `yellow` wants to leave files in `/etc/ssl/yellow` and will try to create this directory.  
 
 # For Developers
 
