@@ -1,36 +1,54 @@
+PATH
+  remote: .
+  specs:
+    yellow (0.1.0)
+      acme-client (~> 2.0)
+      aws-sdk-core (~> 3)
+      aws-sdk-route53 (~> 1.48)
+      openssl (~> 2.2)
+
 GEM
   remote: https://rubygems.org/
   specs:
     acme-client (2.0.7)
       faraday (>= 0.17, < 2.0.0)
-    aws-eventstream (1.1.0)
-    aws-partitions (1.393.0)
-    aws-sdk-core (3.109.2)
+    aws-eventstream (1.1.1)
+    aws-partitions (1.445.0)
+    aws-sdk-core (3.114.0)
       aws-eventstream (~> 1, >= 1.0.2)
       aws-partitions (~> 1, >= 1.239.0)
       aws-sigv4 (~> 1.1)
       jmespath (~> 1.0)
-    aws-sdk-route53 (1.44.0)
-      aws-sdk-core (~> 3, >= 3.109.0)
+    aws-sdk-route53 (1.49.0)
+      aws-sdk-core (~> 3, >= 3.112.0)
       aws-sigv4 (~> 1.1)
-    aws-sigv4 (1.2.2)
+    aws-sigv4 (1.2.3)
       aws-eventstream (~> 1, >= 1.0.2)
-    faraday (1.1.0)
+    connection_pool (2.2.5)
+    excon (0.80.1)
+    faraday (1.4.0)
+      faraday-excon (~> 1.0)
+      faraday-net_http (~> 1.0)
+      faraday-net_http_persistent (~> 1.0)
       multipart-post (>= 1.2, < 3)
-      ruby2_keywords
+      ruby2_keywords (>= 0.0.4)
+    faraday-excon (1.0.0)
+      excon (>= 0.27.4)
+    faraday-net_http (1.0.1)
+    faraday-net_http_persistent (1.0.3)
+      net-http-persistent (>= 3.1)
     jmespath (1.4.0)
     multipart-post (2.1.1)
+    net-http-persistent (4.0.1)
+      connection_pool (~> 2.2)
     openssl (2.2.0)
-    ruby2_keywords (0.0.2)
+    ruby2_keywords (0.0.4)
 
 PLATFORMS
-  ruby
+  x86_64-darwin-20
 
 DEPENDENCIES
-  acme-client
-  aws-sdk-core
-  aws-sdk-route53
-  openssl
+  yellow!
 
 BUNDLED WITH
-   2.2.3
+   2.2.16

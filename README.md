@@ -9,9 +9,19 @@ An Ruby script to issue Let's Encrypt certificates with dns-01 challenges throug
 
 ## Quickstart
 
+Yellow is distributed as a RubyGem and can be installed with:
+
+```
+gem install yellow
+```
+
 Usage:  `yellow --zone ZONE --name COMMONNAME --email EMAIL`
 
 For example:
+
+```
+yellow --zone iachieved.it --name zabbix.operations.iachieved.it --email noreply@iachieved.it
+```
 
 ## Why?
 
@@ -23,7 +33,7 @@ Unfortunately there a many of us who want _secure_ communications between servic
 
 ## Configuration
 
-To use `yellow` you'll need to provide AWS credentials in `aws.env`.  These credentials should be that of an AWS IAM user that only has programmatic access to Route 53 with the `AmazonRoute53FullAccess` policy.
+To use `yellow` you'll need to provide AWS credentials in an `aws.env` file located in `/etc/yellow/aws.env` or `/usr/local/etc/yellow/`.  These credentials should be that of an AWS IAM user that only has programmatic access to Route 53 with the `AmazonRoute53FullAccess` policy.
 
 The format of the `aws.env` file is:
 
@@ -41,7 +51,11 @@ You'll also want to have:
 
 ## Output
 
-By default `yellow` wants to leave files in `/etc/ssl/yellow` and will try to create this directory.  
+By default `yellow` wants to leave files in `/etc/ssl/yellow` and will try to create this directory. 
+
+## Renewals
+
+Let's Encrypt certificates expire 90 days after issuance.
 
 # For Developers
 

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require 'optparse'        # Parse commandline arguments
+require 'optparse' # Parse commandline arguments
 require 'yellow'
 
 options = {}
@@ -77,9 +77,9 @@ unless File.writable?(key_path) && File.writable?(certificate_path)
 end
 
 # Check for existense of aws.env
-awsEnvPath = Pathname.new("#{key_path}/aws.env")
+awsEnvPath = Pathname.new("/etc/yellow/aws.env")
 if not awsEnvPath.exist? then
-  puts "Error:  #{key_path}/aws.env must exist with aws_access_key_id and aws_secret_access_key"
+  puts "Error:  /etc/yellow/aws.env must exist"
   exit -1
 end
 
