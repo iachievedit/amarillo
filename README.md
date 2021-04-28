@@ -1,11 +1,12 @@
 # Amarillo
 
-## WARNING
-**Development is not complete!**
+## NB
 
-A Ruby script to issue Let's Encrypt certificates with dns-01 challenges through AWS Route 53.
+Development on this application is not yet complete, and `amarillo` should not be used in a production environment at this time.
 
-**NB**:  This documentation is not yet complete!
+## Overview
+
+Amarillo is a Ruby applications written to automation issuing Let's Encrypt certificates using dns-01 challenges through AWS Route 53.
 
 ## Quickstart
 
@@ -76,3 +77,6 @@ On macOS, without `rvm`
 sudo gem install bundler
 bundle install
 ```
+# Amarillo
+
+Pronounced "ah-ma-ree-show" in honor of mis amigos uruagayos.  🇺🇾🇺🇸
