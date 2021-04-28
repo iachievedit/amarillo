@@ -15,6 +15,17 @@ Amarillo is distributed as a RubyGem and can be installed with:
 gem install amarillo
 ```
 
+`amarillo` requires the use of OpenSSL libraries and you may need to install with supplying the location of the OpenSSL headers.
+
+macOS:
+```
+gem install amarillo -- --with-openssl-dir=/opt/homebrew/Cellar/openssl@1.1/1.1.1k
+```
+
+Debian/Ubuntu:
+```
+```
+
 Usage:  `amarillo --zone ZONE --name COMMONNAME --email EMAIL`
 
 For example:

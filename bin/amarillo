@@ -20,7 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require 'optparse' # Parse commandline arguments
+require 'optparse' 
+require 'fileutils'
 require 'amarillo'
 
 options = {}
@@ -71,18 +72,40 @@ else
   key_path         = "#{certificate_path}/private"
 end
 
-unless File.writable?(key_path) && File.writable?(certificate_path)
-  puts "#{certificate_path} and #{key_path} are not writable"
-  exit -1
+# Try to create the certificate_path and key_path
+keypath_dirname = File.dirname(key_path)
+unless File.directory?(keypath_dirname)
+	begin
+	  FileUtils.mkdir_p(keypath_dirname)
+	rescue
+		writableMessage = <<-"HEREDOC"
+Error:  #{certificate_path} and #{key_path} are not writable directories to store keys and certificates.
+HEREDOC
+		print writableMessage
+		exit -1
+	end
 end
 
 # Check for existense of aws.env
 awsEnvPath = Pathname.new("/etc/amarillo/aws.env")
 if not awsEnvPath.exist? then
-  puts "Error:  /etc/amarillo/aws.env must exist"
+	awsEnvMessage = <<-"HEREDOC"
+Error:  /etc/amarillo/aws.env AWS credentials file not found.
+
+/etc/amarillo/aws.env must exist and set both aws_access_key_id and aws_secret_access_key for an IAM user with AmazonRoute53FullAccess permissions. 
+
+Example:
+
+[default]
+aws_access_key_id = your_access_key_id
+aws_secret_access_key = your_secret_access_key
+	HEREDOC
+
+	print awsEnvMessage
+
   exit -1
 end
 
 
-y = Yellow.new(certificate_path, key_path, awsEnvPath)
+y = Amarillo.new(certificate_path, key_path, awsEnvPath)
 y.requestCertificate(options[:zone], options[:name], options[:email])

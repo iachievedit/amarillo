@@ -93,7 +93,6 @@ class Amarillo
     # Update Route 53
 
     shared_creds = Aws::SharedCredentials.new(path: "#{@awsEnvPath}")
-    puts shared_creds.path
     Aws.config.update(credentials: shared_creds)
 
     # TODO:  Allow the user to set the region
