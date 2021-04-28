@@ -30,7 +30,7 @@ require 'aws-sdk-core'    # Credentials
 require 'aws-sdk-route53' # Route 53
 require 'resolv'          # DNS Resolvers
 
-class Yellow
+class Amarillo
 
   def initialize(certificatePath, keyPath, awsEnvPath)
 

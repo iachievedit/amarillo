@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 require 'optparse' # Parse commandline arguments
-require 'yellow'
+require 'amarillo'
 
 options = {}
 OptionParser.new do |opts|
@@ -48,7 +48,7 @@ end.parse!
 
 if options[:help] then
    manpage = <<-"HEREDOC"
-Usage:  yellow --zone ZONE --name COMMONNAME --email EMAIL [--output-path OUTPUT_PATH]
+Usage:  amarillo --zone ZONE --name COMMONNAME --email EMAIL [--output-path OUTPUT_PATH]
    HEREDOC
    puts manpage
   exit 0
@@ -58,14 +58,14 @@ if options[:zone].nil? or
    options[:email].nil? or
    options[:name].nil? then
 
-   puts "Usage:  yellow --zone ZONE --name COMMONNAME --email EMAIL [--output-directory OUTPUT_PATH]"
+   puts "Usage:  amarillo --zone ZONE --name COMMONNAME --email EMAIL [--output-directory OUTPUT_PATH]"
 
    exit -1
 end
 
 if options[:output_path].nil?
-  certificate_path = "/etc/ssl/yellow"
-  key_path         = "/etc/ssl/yellow/private"
+  certificate_path = "/etc/ssl/amarillo"
+  key_path         = "/etc/ssl/amarillo/private"
 else
   certificate_path = options[:output_path]
   key_path         = "#{certificate_path}/private"
@@ -77,9 +77,9 @@ unless File.writable?(key_path) && File.writable?(certificate_path)
 end
 
 # Check for existense of aws.env
-awsEnvPath = Pathname.new("/etc/yellow/aws.env")
+awsEnvPath = Pathname.new("/etc/amarillo/aws.env")
 if not awsEnvPath.exist? then
-  puts "Error:  /etc/yellow/aws.env must exist"
+  puts "Error:  /etc/amarillo/aws.env must exist"
   exit -1
 end
 
