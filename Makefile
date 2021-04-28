@@ -1,10 +1,11 @@
 all:
-	gem build yellow.gemspec
+	gem build amarillo.gemspec
 
 clean:
 	rm -f *.gem
+	rm -rf vendor
 
 install:
-	gem install yellow*.gem
+	gem install amarillo*.gem
 
 .PHONY:	clean
