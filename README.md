@@ -3,7 +3,7 @@
 ## WARNING
 **Development is not complete!**
 
-An Ruby script to issue Let's Encrypt certificates with dns-01 challenges through AWS Route 53.
+A Ruby script to issue Let's Encrypt certificates with dns-01 challenges through AWS Route 53.
 
 **NB**:  This documentation is not yet complete!
 
