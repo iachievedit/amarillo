@@ -77,6 +77,12 @@ On macOS, without `rvm`
 sudo gem install bundler
 bundle install
 ```
+
+```
+sudo -s ruby -Ilib ./bin/amarillo --zone iachieved.it --name test.iachieved.it --email joe@iachieved.it
+```
+
+
 # Amarillo
 
 Pronounced "ah-ma-ree-show" in honor of mis amigos uruagayos.  🇺🇾🇺🇸

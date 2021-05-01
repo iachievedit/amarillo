@@ -23,9 +23,14 @@
 require 'optparse' 
 require 'fileutils'
 require 'amarillo'
+require 'amarillo/environment'
 
 options = {}
 OptionParser.new do |opts|
+  opts.on("-i", "--initialize", "Initialize amarillo defaults") do |i|
+    options[:initialize] = i
+  end 
+
   opts.on("-z", "--zone ZONE", "Hosted zone") do |z|
     options[:zone] = z
   end
@@ -55,57 +60,53 @@ Usage:  amarillo --zone ZONE --name COMMONNAME --email EMAIL [--output-path OUTP
   exit 0
 end 
 
-if options[:zone].nil? or
-   options[:email].nil? or
-   options[:name].nil? then
+if options[:initialize] then
+  e = Amarillo::Environment.new
+  e.init
+  exit 0
+end
 
-   puts "Usage:  amarillo --zone ZONE --name COMMONNAME --email EMAIL [--output-directory OUTPUT_PATH]"
+e = Amarillo::Environment.new
+e.load_config
 
+if options[:zone].nil?
+  zone = e.config["defaults"]["zone"]
+  if zone.nil? or zone == '' then
+    puts "Error:  Specify a default zone in config.yml or use --zone"
+    exit -1
+  end
+else
+  zone = options[:zone]
+end
+
+if options[:email].nil?
+  email = e.config["defaults"]["email"]
+  if email.nil? or email == '' then
+    puts "Error:  Specify a default e-mail address in config.yml or use --email"
+    exit -1
+  end
+else
+  email = options[:email]
+end
+
+if options[:name].nil? then
+   puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--output-directory OUTPUT_PATH]"
    exit -1
+else
+  name = options[:name]
 end
 
 if options[:output_path].nil?
-  certificate_path = "/etc/ssl/amarillo"
-  key_path         = "/etc/ssl/amarillo/private"
+  certificatePath = e.certificatePath
+  keyPath         = e.keyPath
+  configPath      = e.configPath
 else
-  certificate_path = options[:output_path]
-  key_path         = "#{certificate_path}/private"
+  certificatePath = options[:output_path]
+  keyPath         = "#{certificate_path}/private"
+  configPath       = "/usr/local/etc/amarillo"
 end
 
-# Try to create the certificate_path and key_path
-keypath_dirname = File.dirname(key_path)
-unless File.directory?(keypath_dirname)
-	begin
-	  FileUtils.mkdir_p(keypath_dirname)
-	rescue
-		writableMessage = <<-"HEREDOC"
-Error:  #{certificate_path} and #{key_path} are not writable directories to store keys and certificates.
-HEREDOC
-		print writableMessage
-		exit -1
-	end
-end
-
-# Check for existense of aws.env
-awsEnvPath = Pathname.new("/etc/amarillo/aws.env")
-if not awsEnvPath.exist? then
-	awsEnvMessage = <<-"HEREDOC"
-Error:  /etc/amarillo/aws.env AWS credentials file not found.
-
-/etc/amarillo/aws.env must exist and set both aws_access_key_id and aws_secret_access_key for an IAM user with AmazonRoute53FullAccess permissions. 
-
-Example:
-
-[default]
-aws_access_key_id = your_access_key_id
-aws_secret_access_key = your_secret_access_key
-	HEREDOC
-
-	print awsEnvMessage
-
-  exit -1
-end
+y = Amarillo.new certificatePath, keyPath, configPath
+y.requestCertificate(zone, name, email)
 
 
-y = Amarillo.new(certificate_path, key_path, awsEnvPath)
-y.requestCertificate(options[:zone], options[:name], options[:email])

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
 	s.name    = "amarillo"
-	s.version = "0.1.1"
+	s.version = "0.1.2"
 	s.summary = "Amarillo"
 	s.description = "A tool for managing Let's Encrypt dns-01 certificates"
 	s.authors     = ["iAchieved.it LLC"]

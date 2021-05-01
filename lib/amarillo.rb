@@ -30,13 +30,24 @@ require 'aws-sdk-core'    # Credentials
 require 'aws-sdk-route53' # Route 53
 require 'resolv'          # DNS Resolvers
 
+
+
 class Amarillo
 
-  def initialize(certificatePath, keyPath, awsEnvPath)
+  def initialize(certificatePath, keyPath, configPath)
 
-    @certificatePath = certificatePath
-    @keyPath         = keyPath
-    @awsEnvPath      = awsEnvPath
+    @environment = Amarillo::Environment.new(certificatePath:  certificatePath, 
+                                             keyPath:          keyPath,
+                                            configPath:       configPath)
+
+    if not @environment.verify then raise "Cannot initialize amarillo" end
+
+    @environment.load_config
+
+    @certificatePath = @environment.certificatePath
+    @keyPath         = @environment.keyPath
+    @config          = @environment.config
+    @awsEnvFile      = @environment.awsEnvFile
 
     @logger = Logger.new(STDOUT)
     @logger.level = Logger::INFO
@@ -67,17 +78,15 @@ class Amarillo
 
   def requestCertificate(zone, commonName, email)
 
-    @logger.info "Generating 4096-bit RSA private key"
-    key = OpenSSL::PKey::RSA.new(4096)
-    client = Acme::Client.new(
-      private_key: key, 
-      directory: 'https://acme-v02.api.letsencrypt.org/directory'
-      )
+    @logger.info "Generating 4096-bit RSA private key for Let's Encrypt account"
 
-    account = client.new_account(
-      contact: "mailto:#{email}", 
-      terms_of_service_agreed: true
-      )
+    key = OpenSSL::PKey::RSA.new(4096)
+
+    client = Acme::Client.new private_key: key, 
+                              directory: 'https://acme-v02.api.letsencrypt.org/directory'
+
+    account = client.new_account contact: "mailto:#{email}", 
+                                 terms_of_service_agreed: true
 
     # Generate a certificate order
     @logger.info "Creating certificate order request for #{commonName}"
@@ -92,14 +101,13 @@ class Amarillo
 
     # Update Route 53
 
-    shared_creds = Aws::SharedCredentials.new(path: "#{@awsEnvPath}")
+    shared_creds = Aws::SharedCredentials.new(path: "#{@awsEnvFile}")
+
     Aws.config.update(credentials: shared_creds)
 
-    # TODO:  Allow the user to set the region
-    route53 = Aws::Route53::Client.new(region: 'us-east-2')
-    hzone   = route53.list_hosted_zones(max_items: 100)
-    .hosted_zones
-    .detect { |z| z.name == "#{zone}." }
+    region  = @config["defaults"]["region"] ? @config["defaults"]["region"] : 'us-east-2'
+    route53 = Aws::Route53::Client.new(region: region)
+    hzone   = route53.list_hosted_zones(max_items: 100).hosted_zones.detect { |z| z.name == "#{zone}." }
 
     change = {
       action: 'UPSERT',
@@ -122,22 +130,12 @@ class Amarillo
 
     route53.change_resource_record_sets(options)
 
-    nameservers = []
-
-    @logger.info "Looking up nameservers for #{zone}"
-
-    Resolv::DNS.open(nameserver: '9.9.9.9') do |dns|
-      while nameservers.length == 0
-        nameservers = dns.getresources(
-          zone,
-          Resolv::DNS::Resource::IN::NS
-          ).map(&:name).map(&:to_s)
-      end
-    end
+    nameservers = @environment.get_zone_nameservers
 
     @logger.info "Waiting for DNS record to propogate"
     while !check_dns(commonName, nameservers, challengeValue)
-      sleep 1
+      sleep 5
+      @logger.info "Still waiting..."
     end
 
     authorization.dns.request_validation
@@ -152,11 +150,11 @@ class Amarillo
 
     @logger.info "Requesting certificate..."
 
-    cert_key = OpenSSL::PKey::RSA.new(4096)
-    csr = Acme::Client::CertificateRequest.new(
-      private_key: cert_key, 
-      names: [commonName]
-      )
+#    cert_key = OpenSSL::PKey::RSA.new(4096)
+    cert_key = OpenSSL::PKey::EC.new("secp384r1").generate_key
+
+    csr = Acme::Client::CertificateRequest.new private_key: cert_key, 
+                                               names: [commonName]
 
     order.finalize(csr: csr)
 
@@ -200,4 +198,9 @@ class Amarillo
 
     route53.change_resource_record_sets(options)
   end
+
+  def renewCertificates
+  end
 end
+
+require 'amarillo/environment'
