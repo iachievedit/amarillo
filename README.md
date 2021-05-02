@@ -45,7 +45,7 @@ Unfortunately there a many of us who want _secure_ communications between servic
 
 ## Configuration
 
-To use `amarillo` you'll need to provide AWS credentials in an `aws.env` file located in `/etc/amarillo/aws.env` or `/usr/local/etc/amarillo/`.  These credentials should be that of an AWS IAM user that only has programmatic access to Route 53 with the `AmazonRoute53FullAccess` policy.
+To use `amarillo` you'll need to provide AWS credentials in an `aws.env` file located in `/usr/local/etc/amarillo/aws.env`.  These credentials should be that of an AWS IAM user that only has programmatic access to Route 53 with the `AmazonRoute53FullAccess` policy.
 
 The format of the `aws.env` file is:
 
@@ -85,4 +85,4 @@ sudo -s ruby -Ilib ./bin/amarillo --zone iachieved.it --name test.iachieved.it -
 
 # Amarillo
 
-Pronounced "ah-ma-ree-show" in honor of mis amigos uruagayos.  🇺🇾🇺🇸
+Pronounced "ah-ma-ree-show" in honor of mis amigos uruguayos.  🇺🇾🇺🇸

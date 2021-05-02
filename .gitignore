@@ -2,3 +2,4 @@
 vendor
 aws.*
 *.gem
+*.gemspec

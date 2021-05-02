@@ -31,6 +31,10 @@ OptionParser.new do |opts|
     options[:initialize] = i
   end 
 
+  opts.on("-r", "--renew", "Renew certificates") do |r|
+    options[:renew] = r
+  end
+
   opts.on("-z", "--zone ZONE", "Hosted zone") do |z|
     options[:zone] = z
   end
@@ -43,8 +47,8 @@ OptionParser.new do |opts|
     options[:name] = n
   end
 
-  opts.on("-o", "--output-directory OUTPUT_PATH", "Output directory of certificates and keys") do |o|
-    options[:certificate_path] = o
+  opts.on("-a", "--amarillo-home AMARILLO_HOME", "Home directory for configuration, keys, and certificates") do |o|
+    options[:amarillo_home] = a
   end
 
   opts.on("-h", "--help") do |h|
@@ -62,7 +66,9 @@ end
 
 if options[:initialize] then
   e = Amarillo::Environment.new
-  e.init
+
+  e.init options[:zone], options[:email]
+
   exit 0
 end
 
@@ -89,24 +95,25 @@ else
   email = options[:email]
 end
 
-if options[:name].nil? then
-   puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--output-directory OUTPUT_PATH]"
+if options[:name].nil? and options[:renew].nil? then
+   puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--amarillo-home AMARILLO_HOME]"
    exit -1
 else
   name = options[:name]
 end
 
-if options[:output_path].nil?
-  certificatePath = e.certificatePath
-  keyPath         = e.keyPath
-  configPath      = e.configPath
+if options[:amarillo_home].nil?
+  amarillo_home = "/usr/local/etc/amarillo"
 else
-  certificatePath = options[:output_path]
-  keyPath         = "#{certificate_path}/private"
-  configPath       = "/usr/local/etc/amarillo"
+  amarillo_home = options[:amarillo_home]
 end
 
-y = Amarillo.new certificatePath, keyPath, configPath
-y.requestCertificate(zone, name, email)
+y = Amarillo.new amarillo_home
+
+if options[:renew] then
+  y.renewCertificates
+else
+  y.requestCertificate zone, name, email, nil
+end
 
 

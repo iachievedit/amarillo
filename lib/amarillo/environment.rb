@@ -27,31 +27,40 @@ require 'logger'
 require 'yaml'
 require 'aws-sdk-core'
 
-DefaultCertificatePath = "/usr/local/etc/amarillo/certificates"
-DefaultKeyPath         = "/usr/local/etc/amarillo/keys"
-DefaultConfigPath      = "/usr/local/etc/amarillo"
+DefaultAmarilloHome = "/usr/local/etc/amarillo/"
 
 class Amarillo::Environment
 
-  attr_reader :certificatePath, :keyPath, :configPath, :config, :awsEnvFile
+  attr_reader :certificatePath, :keyPath, :configPath, :configsPath, :config, :awsEnvFile
 
-  def initialize(certificatePath: DefaultCertificatePath,
-                         keyPath: DefaultKeyPath,
-                      configPath: DefaultConfigPath)
+  def initialize(amarilloHome:  DefaultAmarilloHome)
 
     @logger = Logger.new(STDOUT)
     @logger.level = Logger::INFO
 
-    @certificatePath = certificatePath
-    @keyPath         = keyPath
-    @configPath      = configPath
-    @configFile      = configPath + "/config.yml"
-    @awsEnvFile      = configPath + "/aws.env"
+    @amarilloHome    = amarilloHome
+    @certificatePath = amarilloHome + "/certificates"
+    @keyPath         = amarilloHome + "/keys"
+    @configPath      = amarilloHome
+    @configsPath     = amarilloHome + "/configs"
+    @configFile      = amarilloHome + "/config.yml"
+    @awsEnvFile      = amarilloHome + "/aws.env"
 
   end
 
   # Public method to create default configuration files
-  def init
+  def init(zone = nil, email = nil)
+
+    unless File.exist?(@configsPath) and File.directory?(@configsPath)
+      begin
+        @logger.info "Creating #{@configsPath} directory"
+        FileUtils.mkpath(@configsPath)
+      rescue
+        @logger.error("Cannot create #{@configsPath} directory")
+        return false
+      end
+    end
+
     unless File.exist?(@certificatePath) and File.directory?(@certificatePath)
       begin
         @logger.info "Creating #{@certificatePath} directory"
@@ -72,6 +81,7 @@ class Amarillo::Environment
       end 
     end
 
+    # Create aws.env
     unless File.exist?(@awsEnvFile) then
       awsEnv = <<-HEREDOC
 [default]
@@ -79,27 +89,43 @@ aws_access_key_id =
 aws_secret_access_key = 
 HEREDOC
       @logger.info("Creating blank #{@awsEnvFile}")
-      @logger.warning("NOTE:  aws_access_key_id and aws_secret_access_key must be specified in this file.")
+      @logger.warn("NOTE:  aws_access_key_id and aws_secret_access_key must be specified in this file.")
       File.write(@awsEnvFile, awsEnv)
     else
       @logger.info("Refusing to overwrite #{@awsEnvFile}")
     end
 
+    # Create config.yml
     unless File.exist?(@configFile) then
       @logger.info("Creating default configuration #{@configFile}")
       config = {
         "defaults" => {
-          "region"       =>  'us-east-2',
+          "region"      =>  'us-east-2',
           "profile"     => 'default',
-          "email"       =>  '',
-          "zone"        =>  '',
-          "nameservers" =>  ['208.67.222.222', '9.9.9.9']
+          "email"       =>  email,
+          "zone"        =>  zone,
+          "nameservers" =>  ['208.67.222.222', '9.9.9.9'],
+          "key_type"    =>  'ec,secp384r1'
       }}
       File.write(@configFile, config.to_yaml)
     else
       @logger.info("Refusing to overwrite #{@configFile}")
     end
 
+    # Create RSA private key for Let's Encrypt account
+    privateKeyPath = "#{@keyPath}/letsencrypt.key"
+
+    unless File.exist? privateKeyPath then
+      @logger.info "Generating 4096-bit RSA private key for Let's Encrypt account"
+
+      privateKey = OpenSSL::PKey::RSA.new(4096)
+
+
+      File.open(privateKeyPath, "w") do |f|
+        f.puts privateKey.to_pem.to_s
+      end
+      File.chmod(0400, privateKeyPath)
+    end
   end
 
   #

@@ -29,16 +29,13 @@ require 'openssl'         # Key Generation
 require 'aws-sdk-core'    # Credentials
 require 'aws-sdk-route53' # Route 53
 require 'resolv'          # DNS Resolvers
-
-
+require 'yaml'            # YAML
 
 class Amarillo
 
-  def initialize(certificatePath, keyPath, configPath)
+  def initialize(amarilloHome)
 
-    @environment = Amarillo::Environment.new(certificatePath:  certificatePath, 
-                                             keyPath:          keyPath,
-                                            configPath:       configPath)
+    @environment = Amarillo::Environment.new(amarilloHome:  amarilloHome)
 
     if not @environment.verify then raise "Cannot initialize amarillo" end
 
@@ -48,6 +45,7 @@ class Amarillo
     @keyPath         = @environment.keyPath
     @config          = @environment.config
     @awsEnvFile      = @environment.awsEnvFile
+    @configsPath     = @environment.configsPath
 
     @logger = Logger.new(STDOUT)
     @logger.level = Logger::INFO
@@ -76,14 +74,32 @@ class Amarillo
     valid
   end
 
-  def requestCertificate(zone, commonName, email)
+  def get_route53
+    shared_creds = Aws::SharedCredentials.new(path: "#{@awsEnvFile}")
 
-    @logger.info "Generating 4096-bit RSA private key for Let's Encrypt account"
+    Aws.config.update(credentials: shared_creds)
 
-    key = OpenSSL::PKey::RSA.new(4096)
+    region  = @config["defaults"]["region"] ? @config["defaults"]["region"] : 'us-east-2'
+    @route53 = Aws::Route53::Client.new(region: region)
+    @hzone   = @route53.list_hosted_zones(max_items: 100).hosted_zones.detect { |z| z.name == "#{@zone}." }
+
+  end
+
+  def requestCertificate(zone, commonName, email, key_type)
+
+    @zone = zone
+
+    acmeUrl = @config["defaults"]["acme_url"] ? @config["defaults"]["acme_url"] : 'https://acme-v02.api.letsencrypt.org/directory'
+
+    # Load private key
+
+    @logger.info "Loading 4096-bit RSA private key for Let's Encrypt account"
+    @logger.info "Let's Encrypt directory set to #{acmeUrl}"
+
+    key = OpenSSL::PKey::RSA.new File.read "#{@keyPath}/letsencrypt.key"
 
     client = Acme::Client.new private_key: key, 
-                              directory: 'https://acme-v02.api.letsencrypt.org/directory'
+                              directory:   acmeUrl
 
     account = client.new_account contact: "mailto:#{email}", 
                                  terms_of_service_agreed: true
@@ -99,15 +115,7 @@ class Amarillo
 
     @logger.info "Challenge value for #{commonName} in #{zone} zone is #{challengeValue}"
 
-    # Update Route 53
-
-    shared_creds = Aws::SharedCredentials.new(path: "#{@awsEnvFile}")
-
-    Aws.config.update(credentials: shared_creds)
-
-    region  = @config["defaults"]["region"] ? @config["defaults"]["region"] : 'us-east-2'
-    route53 = Aws::Route53::Client.new(region: region)
-    hzone   = route53.list_hosted_zones(max_items: 100).hosted_zones.detect { |z| z.name == "#{zone}." }
+    self.get_route53
 
     change = {
       action: 'UPSERT',
@@ -122,19 +130,19 @@ class Amarillo
     }
 
     options = {
-      hosted_zone_id: hzone.id,
+      hosted_zone_id: @hzone.id,
       change_batch: {
         changes: [change]
       }
     }
 
-    route53.change_resource_record_sets(options)
+    @route53.change_resource_record_sets(options)
 
     nameservers = @environment.get_zone_nameservers
 
-    @logger.info "Waiting for DNS record to propogate"
+    @logger.info "Waiting for DNS record to propagate"
     while !check_dns(commonName, nameservers, challengeValue)
-      sleep 5
+      sleep 2
       @logger.info "Still waiting..."
     end
 
@@ -148,15 +156,40 @@ class Amarillo
     	authorization.dns.reload
     end
 
-    @logger.info "Requesting certificate..."
+    @logger.info "Generating key"
 
-#    cert_key = OpenSSL::PKey::RSA.new(4096)
-    cert_key = OpenSSL::PKey::EC.new("secp384r1").generate_key
+    # Create certificate yml
+    certConfig = {
+      "commonName"  =>  commonName,
+      "email"       =>  email,
+      "zone"        =>  zone
+    }
 
-    csr = Acme::Client::CertificateRequest.new private_key: cert_key, 
+    if key_type
+      certConfig["key_type"] = key_type
+    else
+      key_type = @config["defaults"]["key_type"]
+      certConfig["key_type"] = key_type
+    end 
+
+    type, args = key_type.split(',')
+
+    if type == 'ec' then
+      certPrivateKey = OpenSSL::PKey::EC.new(args).generate_key
+    elsif type == 'rsa' then
+      certPrivateKey = OpenSSL::PKey::RSA.new(args)
+    end
+
+    @logger.info "Requesting certificate..."  
+    csr = Acme::Client::CertificateRequest.new private_key: certPrivateKey, 
                                                names: [commonName]
 
-    order.finalize(csr: csr)
+    begin                                               
+      order.finalize(csr: csr)
+    rescue
+      @logger.error("ERROR")
+      self.cleanup label, record_type, challengeValue
+    end
 
     sleep(1) while order.status == 'processing'
 
@@ -166,8 +199,9 @@ class Amarillo
     @logger.info "Saving private key to #{keyOutputPath}"
 
     File.open(keyOutputPath, "w") do |f|
-    	f.puts cert_key.to_pem.to_s
+    	f.puts certPrivateKey.to_pem.to_s
     end
+    File.chmod(0600, keyOutputPath)
 
     @logger.info "Saving certificate to #{certOutputPath}"
 
@@ -175,6 +209,14 @@ class Amarillo
     	f.puts order.certificate
     end
 
+    certConfigFile = "#{@configsPath}/#{commonName}.yml"
+    File.write(certConfigFile, certConfig.to_yaml)
+
+    self.cleanup label, record_type, challengeValue
+
+  end
+
+  def cleanup(label, record_type, challengeValue)
     @logger.info "Cleaning up..."
 
     change = {
@@ -190,17 +232,45 @@ class Amarillo
     }
 
     options = {
-      hosted_zone_id: hzone.id,
+      hosted_zone_id: @hzone.id,
       change_batch: {
         changes: [change]
       }
     }
 
-    route53.change_resource_record_sets(options)
+    @route53.change_resource_record_sets(options)
+  end
+
+  def renewCertificate(zone, commonName, email)
+
   end
 
   def renewCertificates
+    t = Time.now
+    @logger.info "Renewing certificates"
+
+    Dir["#{@configsPath}/*.yml"].each do |c|
+      config = YAML.load(File.read(c))
+
+      cn       = config["commonName"]
+      email    = config["email"]
+      zone     = config["zone"]
+      key_type = config["key_type"]
+
+      certificatePath = "#{@certificatePath}/#{cn}.crt"
+      raw = File.read certificatePath
+      certificate = OpenSSL::X509::Certificate.new raw      
+      daysToExpiration = (certificate.not_after - t).to_i / (24 * 60 * 60)
+
+      if daysToExpiration < 30 then
+        @logger.info "#{cn} certificate needs to be renewed"
+        self.requestCertificate zone, cn, email, key_type
+      else
+        @logger.info "#{cn} certificate does not need to be renewed"
+      end
+    end
   end
 end
+
 
 require 'amarillo/environment'
