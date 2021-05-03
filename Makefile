@@ -11,7 +11,7 @@ test:
 	rake test
 
 publish:	all
-	gem push
+	gem push amarillo-${GEM_VERSION}.gem
 
 clean:
 	rm -f amarillo-$(GEM_VERSION).gem
