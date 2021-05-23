@@ -30,6 +30,7 @@ require 'aws-sdk-core'    # Credentials
 require 'aws-sdk-route53' # Route 53
 require 'resolv'          # DNS Resolvers
 require 'yaml'            # YAML
+require 'terminal-table'  # Tablular output
 
 class Amarillo
 
@@ -242,6 +243,39 @@ class Amarillo
   end
 
   def renewCertificate(zone, commonName, email)
+
+  end
+
+  def listCertificates
+
+    rows = []
+
+    Dir["#{@configsPath}/*.yml"].each do |c|
+      config = YAML.load(File.read(c))
+
+      cn = config["commonName"]
+
+      certificatePath = "#{@certificatePath}/#{cn}.crt"
+      raw = File.read certificatePath
+      certificate = OpenSSL::X509::Certificate.new raw      
+
+      rows <<  [config["commonName"], config["email"],
+                config["zone"], config["key_type"], certificate.not_after]
+
+    end
+
+    t = Terminal::Table.new :headings => ['commonName','email','zone','keytype','expiration'], :rows => rows
+    puts t
+  end
+
+  def deleteCertificate(commonName)
+    @logger.info "Deleting certificate #{commonName}"
+
+    certConfigFile = @configsPath + "/#{commonName}.yml"
+    certificatePath = @certificatePath + "/#{commonName}.crt"
+    keyPath         = @keyPath         + "/#{commonName}.key"
+
+    `rm -f #{certConfigFile} #{certificatePath} #{keyPath}`
 
   end
 

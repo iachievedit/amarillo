@@ -29,7 +29,15 @@ options = {}
 OptionParser.new do |opts|
   opts.on("-i", "--initialize", "Initialize amarillo defaults") do |i|
     options[:initialize] = i
-  end 
+  end
+
+  opts.on("-l", "--list", "List certificates") do |l|
+    options[:list] = l
+  end
+
+  opts.on("-d", "--delete", "Delete certificate") do |d|
+    options[:delete] = d
+  end
 
   opts.on("-r", "--renew", "Renew certificates") do |r|
     options[:renew] = r
@@ -95,9 +103,9 @@ else
   email = options[:email]
 end
 
-if options[:name].nil? and options[:renew].nil? then
-   puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--amarillo-home AMARILLO_HOME]"
-   exit -1
+if options[:name].nil? and options[:renew].nil? and options[:list].nil? then
+  puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--amarillo-home AMARILLO_HOME]"
+  exit -1
 else
   name = options[:name]
 end
@@ -112,6 +120,10 @@ y = Amarillo.new amarillo_home
 
 if options[:renew] then
   y.renewCertificates
+elsif options[:list] then
+  y.listCertificates
+elsif options[:delete] then
+  y.deleteCertificate name
 else
   y.requestCertificate zone, name, email, nil
 end

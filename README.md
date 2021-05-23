@@ -59,6 +59,32 @@ aws_secret_access_key=
 ```
 ## Creating a Certificate
 
+Assuming `aws.env` and `config.yml` are configured appropriately:
+
+```
+amarillo --name COMMONNAME
+```
+
+## Deleting a Certificate
+
+```
+amarillo --name COMMONNAME --delete
+```
+
+## Listing Certificates
+
+```
+amarillo --list
+```
+
+## Renewals
+
+Let's Encrypt certificates expire 90 days after issuance.  `amarillo` will renew certificates that are within 30 days of expiration with:
+
+```
+amarillo --renew
+```
+
 ## Output
 
 By default `amarillo` wants to leave files in `/usr/local/etc/ssl/amarillo` and will try to create this directory.  Inside this directory will be:
@@ -69,9 +95,9 @@ By default `amarillo` wants to leave files in `/usr/local/etc/ssl/amarillo` and 
 * `keys/`
 * `configs/`
 
-## Renewals
+# Referencing a Certificate
 
-Let's Encrypt certificates expire 90 days after issuance.
+`amarillo`, unlike `certbot`, does not edit your webserver configuration files.  You will want to reference the files directly.  
 
 # For Developers
 
@@ -96,5 +122,5 @@ Unfortunately there a many of us who want _secure_ communications between servic
 
 # Amarillo
 
-Amarillo is the Spanish word for yellow, and is pronounced "ah-ma-ree-show" in honor of mis amigos uruguayos.  🇺🇾🇺🇸
+Amarillo is the Spanish word for yellow, and is pronounced "ah-ma-ree-show" in honor of mis amigos uruguayos.  🇺🇾🇺🇸  Yellow is also the name of one of my cats.
 
