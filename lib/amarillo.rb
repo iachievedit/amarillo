@@ -192,7 +192,10 @@ class Amarillo
       self.cleanup label, record_type, challengeValue
     end
 
-    sleep(1) while order.status == 'processing'
+    while order.status == 'processing'
+      sleep(1)
+      order.reload
+    end
 
     keyOutputPath =  "#{@keyPath}/#{commonName}.key"
     certOutputPath = "#{@certificatePath}/#{commonName}.crt"
