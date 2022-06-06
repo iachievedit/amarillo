@@ -185,16 +185,18 @@ class Amarillo
     csr = Acme::Client::CertificateRequest.new private_key: certPrivateKey, 
                                                names: [commonName]
 
-    begin                                               
-      order.finalize(csr: csr)
-    rescue
-      @logger.error("ERROR")
-      self.cleanup label, record_type, challengeValue
-    end
-
     while order.status == 'processing'
       sleep(1)
       order.reload
+    end
+
+    @logger.info "Order status:  #{order.status}"
+
+    begin                                               
+      order.finalize(csr: csr)
+    rescue
+      @logger.error("Error finalizing certificate order")
+      self.cleanup label, record_type, challengeValue
     end
 
     keyOutputPath =  "#{@keyPath}/#{commonName}.key"
