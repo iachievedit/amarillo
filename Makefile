@@ -1,4 +1,4 @@
-GEM_VERSION=0.3.2
+GEM_VERSION=0.3.3
 
 all:
 	jinja -D GEM_VERSION ${GEM_VERSION} -o amarillo.gemspec amarillo.gemspec.j2
@@ -14,7 +14,7 @@ publish:	all
 	gem push amarillo-${GEM_VERSION}.gem
 
 clean:
-	rm -f amarillo-$(GEM_VERSION).gem
+	rm -f amarillo-*.gem
 	rm -rf vendor
 
 distclean:	clean

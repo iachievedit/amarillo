@@ -139,6 +139,11 @@ class Amarillo
 
     @route53.change_resource_record_sets(options)
 
+    at_exit do 
+      self.cleanup label, record_type, challengeValue
+    end
+
+
     nameservers = @environment.get_zone_nameservers
 
     @logger.info "Waiting for DNS record to propagate"
@@ -178,16 +183,22 @@ class Amarillo
     if type == 'ec' then
       certPrivateKey = OpenSSL::PKey::EC.new(args).generate_key
     elsif type == 'rsa' then
-      certPrivateKey = OpenSSL::PKey::RSA.new(args)
+      if args.to_i > 0
+        certPrivateKey = OpenSSL::PKey::RSA.new(args.to_i)
+      else
+        @logger.error("Invalid RSA key size:  #{args}")
+      end 
     end
 
     @logger.info "Requesting certificate..."  
     csr = Acme::Client::CertificateRequest.new private_key: certPrivateKey, 
                                                names: [commonName]
 
-    while order.status == 'processing'
+    while order.status != 'ready'
       sleep(1)
+      @logger.info "Order status:  #{order.status}"
       order.reload
+      raise if order.status == 'invalid'
     end
 
     @logger.info "Order status:  #{order.status}"
@@ -196,7 +207,7 @@ class Amarillo
       order.finalize(csr: csr)
     rescue
       @logger.error("Error finalizing certificate order")
-      self.cleanup label, record_type, challengeValue
+      raise 
     end
 
     keyOutputPath =  "#{@keyPath}/#{commonName}.key"
@@ -217,8 +228,6 @@ class Amarillo
 
     certConfigFile = "#{@configsPath}/#{commonName}.yml"
     File.write(certConfigFile, certConfig.to_yaml)
-
-    self.cleanup label, record_type, challengeValue
 
   end
 

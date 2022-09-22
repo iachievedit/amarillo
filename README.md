@@ -108,9 +108,39 @@ sudo gem install bundler
 bundle install
 ```
 
+Local testing:
 ```
 sudo -s ruby -Ilib ./bin/amarillo --zone iachieved.it --name test.iachieved.it --email joe@iachieved.it
 ```
+
+Configuration file format examples:
+
+```
+defaults:
+  region: us-east-1
+  profile: default
+  email: iachieved.it@example.com
+  zone: example.com
+  acme_url:  'https://acme-v02.api.letsencrypt.org/directory'
+  nameservers:
+  - 208.67.222.222
+  - 9.9.9.9
+  key_type:  ec,secp384r1
+```
+
+For the ACME staging environment change `acme_url` to `https://acme-staging-v02.api.letsencrypt.org/directory`
+
+`key_type` is a tuple specifying the type of key:
+
+* `ec` - Elliptic Curve
+* `rsa` - RSA
+
+and curve (for EC) or length (RSA).  For example:
+
+* `rsa,2048` - A 2048-bit RSA key
+* `ec,prime256v1` - An Elliptic Curve key using the NIST P-256 curve
+
+
 
 # Why?
 
