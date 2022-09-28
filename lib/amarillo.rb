@@ -3,7 +3,7 @@
 # Inspired by Pete Keen's (pete@petekeen.net) post
 # https://www.petekeen.net/lets-encrypt-without-certbot
 # 
-# Copyright 2021 iAchieved.it LLC
+# Copyright 2022 iAchieved.it LLC
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -86,7 +86,17 @@ class Amarillo
 
   end
 
-  def requestCertificate(zone, commonName, email, key_type)
+  def requestCertificate(configPath:  nil, certConfig:  nil)
+
+    if configPath
+      certConfig = YAML.load(File.read(configPath))
+    end
+    
+    commonName     = certConfig["commonName"]
+    email          = certConfig["email"]
+    zone           = certConfig["zone"]
+    key_type       = certConfig["key_type"]
+    renewal_action = certConfig["renewal_action"]
 
     @zone = zone
 
@@ -148,7 +158,7 @@ class Amarillo
 
     @logger.info "Waiting for DNS record to propagate"
     while !check_dns(commonName, nameservers, challengeValue)
-      sleep 2
+      sleep 5
       @logger.info "Still waiting..."
     end
 
@@ -157,7 +167,7 @@ class Amarillo
     @logger.info "Requesting validation..."
     authorization.dns.reload
     while authorization.dns.status == 'pending'
-    	sleep 2
+    	sleep 5
     	@logger.info "DNS status:  #{authorization.dns.status}"
     	authorization.dns.reload
     end
@@ -165,11 +175,12 @@ class Amarillo
     @logger.info "Generating key"
 
     # Create certificate yml
-    certConfig = {
-      "commonName"  =>  commonName,
-      "email"       =>  email,
-      "zone"        =>  zone
-    }
+    #certConfig = {
+    #  "commonName"  =>  commonName,
+    #  "email"       =>  email,
+    #  "zone"        =>  zone,
+    #  "renewal_action" => renewal_action,
+    #}
 
     if key_type
       certConfig["key_type"] = key_type
@@ -218,7 +229,13 @@ class Amarillo
     File.open(keyOutputPath, "w") do |f|
     	f.puts certPrivateKey.to_pem.to_s
     end
-    File.chmod(0600, keyOutputPath)
+
+    keyMode = @config["defaults"]["key_mode"] || 0600
+    if keyMode
+      File.chmod(keyMode, keyOutputPath)
+    else
+      File.chmod(0600, keyOutputPath)
+    end
 
     @logger.info "Saving certificate to #{certOutputPath}"
 
@@ -226,8 +243,20 @@ class Amarillo
     	f.puts order.certificate
     end
 
+    owner = certConfig["owner"] || @config["defaults"]["owner"] || "root"
+    group = certConfig["group"] || @config["defaults"]["group"] || "root"
+    begin
+      FileUtils.chown(owner, group, keyOutputPath)
+    rescue
+      @logger.info "Unable to change ownership of key file #{keyOutputPath}"
+    end
+
     certConfigFile = "#{@configsPath}/#{commonName}.yml"
+
+    @logger.info "Saving certificate configuration to #{certConfigFile}"
     File.write(certConfigFile, certConfig.to_yaml)
+
+    self.doRenewalAction renewal_action
 
   end
 
@@ -254,10 +283,6 @@ class Amarillo
     }
 
     @route53.change_resource_record_sets(options)
-  end
-
-  def renewCertificate(zone, commonName, email)
-
   end
 
   def listCertificates
@@ -293,6 +318,7 @@ class Amarillo
 
   end
 
+  # Renew all certificates
   def renewCertificates
     t = Time.now
     @logger.info "Renewing certificates"
@@ -300,10 +326,7 @@ class Amarillo
     Dir["#{@configsPath}/*.yml"].each do |c|
       config = YAML.load(File.read(c))
 
-      cn       = config["commonName"]
-      email    = config["email"]
-      zone     = config["zone"]
-      key_type = config["key_type"]
+      cn = config["commonName"]
 
       certificatePath = "#{@certificatePath}/#{cn}.crt"
       raw = File.read certificatePath
@@ -312,12 +335,39 @@ class Amarillo
 
       if daysToExpiration < 30 then
         @logger.info "#{cn} certificate needs to be renewed"
-        self.requestCertificate zone, cn, email, key_type
+        self.requestCertificate configPath:  c
       else
         @logger.info "#{cn} certificate does not need to be renewed"
       end
     end
   end
+
+  # Renew specific certificate, implied force
+  def renewCertificate(commonName)
+
+    configPath = "#{@configsPath}/#{commonName}.yml"
+    self.requestCertificate configPath:  configPath
+
+  end
+
+  def doRenewalAction(renewal_action)
+
+    if renewal_action
+
+        @logger.info "Executing certificate renewal action:  #{renewal_action}"
+
+        begin
+          %x( #{renewal_action} )
+          @logger.info "Renewal action returned:  #{$?}"
+        rescue
+          @logger.error("Error executing certificate renewal action")
+          raise
+        end 
+
+    end
+
+  end
+
 end
 
 

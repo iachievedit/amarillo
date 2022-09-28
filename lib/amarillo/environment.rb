@@ -105,7 +105,10 @@ HEREDOC
           "email"       =>  email,
           "zone"        =>  zone,
           "nameservers" =>  ['208.67.222.222', '9.9.9.9'],
-          "key_type"    =>  'ec,secp384r1'
+          "key_type"    =>  'ec,secp384r1',
+          "owner"       =>  'root',
+          "group"       =>  'root',
+          "key_mode"    =>  0660
       }}
       File.write(@configFile, config.to_yaml)
     else

@@ -1,4 +1,4 @@
-GEM_VERSION=0.3.3
+GEM_VERSION=0.4.0
 
 all:
 	jinja -D GEM_VERSION ${GEM_VERSION} -o amarillo.gemspec amarillo.gemspec.j2

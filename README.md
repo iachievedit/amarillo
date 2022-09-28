@@ -2,7 +2,7 @@
 
 ## NB
 
-Development on this application is not yet complete, and `amarillo` should not be used in a production environment at this time.  In particular I know there's a pernicious bug that wipes out your existing certificate.
+Development on this application is not yet complete, and `amarillo` should not be used in a production environment at this time.  In particular I know there's a pernicious bug that can wipe out your existing certificate.
 
 ## Overview
 

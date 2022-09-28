@@ -39,8 +39,12 @@ OptionParser.new do |opts|
     options[:delete] = d
   end
 
-  opts.on("-r", "--renew", "Renew certificates") do |r|
-    options[:renew] = r
+  opts.on("-r", "--renew [COMMONNAME]", "Renew specific or all certificates") do |r|
+    if r
+      options[:renew] = r
+    else
+      options[:renew] = 'all'
+    end
   end
 
   opts.on("-z", "--zone ZONE", "Hosted zone") do |z|
@@ -108,7 +112,7 @@ else
 end
 
 if options[:name].nil? and options[:renew].nil? and options[:list].nil? then
-  puts "Usage:  amarillo --name COMMONNAME [--zone ZONE] [--email EMAIL] [--amarillo-home AMARILLO_HOME]"
+  puts "Usage:  amarillo [--name COMMONNAME|--renew|--renew COMMONNAME] [--zone ZONE] [--email EMAIL] [--amarillo-home AMARILLO_HOME]"
   exit -1
 else
   name = options[:name]
@@ -123,13 +127,25 @@ end
 y = Amarillo.new amarillo_home
 
 if options[:renew] then
-  y.renewCertificates
+
+  if options[:renew] != 'all' then
+    y.renewCertificate options[:renew]
+  else
+    y.renewCertificates
+  end
+
 elsif options[:list] then
   y.listCertificates
 elsif options[:delete] then
   y.deleteCertificate name
 else
-  y.requestCertificate zone, name, email, options[:keytype]
+  config = {
+    "zone"           => zone,
+    "commonName"     => name,
+    "email"          => email,
+    "key_type"       => options[:keytype]
+  }
+  y.requestCertificate certConfig:  config
 end
 
 
